@@ -1,0 +1,10 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "forge_test"
+version = "1.0"
+displayName = "Forge Test"
+authors = "Test"
+description = "Control test mod for Forge via stock ForgeGradle"

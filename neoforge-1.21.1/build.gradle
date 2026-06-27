@@ -1,0 +1,66 @@
+plugins {
+    id 'java'
+    id 'idea'
+    // Our ForgeGradle fork, resolved from maven.zznty.ru. It defaults the Minecraft Mavenizer to our
+    // multi-loader-capable fork (which delegates to NFRT for NeoForge), so no tool override is needed.
+    id 'net.zznty.forgegradle' version '[7.0.29,8.0)'
+}
+
+version = '1.0'
+group = 'com.example'
+base.archivesName = 'neoforge_test'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+// ─── Minecraft / NeoForge ─────────────────────────────────────────
+minecraft {
+    mappings channel: 'official', version: mc_version
+
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir('run')
+            systemProperty 'neoforge.logging.console.level', 'debug'
+        }
+
+        register('client') {
+            // Client will be killed after reaching main menu
+        }
+
+        register('server') {
+            args '--nogui'
+        }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.neoForgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+
+dependencies {
+    implementation minecraft.dependency("net.neoforged:neoforge:${neoforge_version}")
+}
+
+idea.module { downloadJavadoc = downloadSources = true }
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('processResources', ProcessResources) {
+    var replaceProperties = [
+        minecraft_version: mc_version,
+        neoforge_version: neoforge_version,
+        mod_id: mod_id,
+        mod_name: mod_name,
+        mod_version: mod_version,
+        mod_authors: mod_authors,
+        mod_description: mod_description,
+    ]
+    inputs.property('replaceProperties', replaceProperties)
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties
+    }
+}

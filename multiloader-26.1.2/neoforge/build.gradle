@@ -1,0 +1,4 @@
+// NeoForge loader module. Shared FG7 config + common-source-merge + run tasks come from the root build.gradle.
+dependencies {
+    implementation minecraft.dependency("net.neoforged:neoforge:${neoforge_version}")
+}

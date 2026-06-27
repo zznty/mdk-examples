@@ -1,0 +1,5 @@
+// Fabric loader module. Shared FG7 config + common-source-merge + run tasks come from the root build.gradle.
+dependencies {
+    // Synthetic coordinate '<mc>-<loader>' (handled by our forked Mavenizer).
+    implementation minecraft.dependency("net.fabricmc:fabric:${mc_version}-${fabric_loader_version}")
+}

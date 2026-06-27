@@ -1,0 +1,68 @@
+plugins {
+    id 'java'
+    id 'idea'
+    // Our ForgeGradle fork, resolved from maven.zznty.ru. It defaults the Minecraft Mavenizer to our
+    // multi-loader-capable fork, so no tool override is needed.
+    id 'net.zznty.forgegradle' version '[7.0.29,8.0)'
+}
+
+version = '1.0'
+group = 'com.example'
+base.archivesName = "fabric_${mc_version.replace('.', '_')}"
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(mc_java_version as int)
+
+// ─── Minecraft / Fabric ───────────────────────────────────────────
+// For OBFUSCATED Minecraft (<= 1.21.11), declaring official (Mojang) mappings makes the Mavenizer remap the
+// merged jar notch -> 'named' (Mojmap) so it matches what Forge/NeoForge run in dev. A shippable jar is
+// produced by reobfuscating Mojmap -> intermediary (see the Renamer setup in the multiloader examples).
+minecraft {
+    mappings channel: 'official', version: mc_version
+
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir('run')
+        }
+
+        register('client') {
+            // Client will be killed after reaching main menu
+        }
+
+        register('server') {
+            args '--nogui'
+        }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.fabricMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+
+dependencies {
+    // Synthetic coordinate: '<mcVersion>-<loaderVersion>' (mirrors net.minecraftforge:forge:<mc>-<forge>).
+    implementation minecraft.dependency("net.fabricmc:fabric:${mc_version}-${loader_version}")
+}
+
+idea.module { downloadJavadoc = downloadSources = true }
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('processResources', ProcessResources) {
+    var replaceProperties = [
+        minecraft_version: mc_version,
+        loader_version: loader_version,
+        mod_id: mod_id,
+        mod_name: mod_name,
+        mod_version: mod_version,
+        mod_description: mod_description,
+    ]
+    inputs.property('replaceProperties', replaceProperties)
+    filesMatching(['fabric.mod.json']) {
+        expand replaceProperties
+    }
+}

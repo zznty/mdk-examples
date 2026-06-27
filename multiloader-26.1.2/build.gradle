@@ -1,0 +1,106 @@
+// Root build for the multiloader example. All shared configuration lives here in subprojects {} blocks, so
+// there is no buildSrc / convention plugins to maintain (the same approach as a typical Architectury project).
+//
+//   * subprojects {}                                  -> applied to EVERY module (common + loaders)
+//   * configure(subprojects - common) {}              -> applied to the LOADER modules only
+//
+// Per-module build.gradle files then only carry what genuinely differs (the Minecraft/loader coordinate and
+// any loader-specific run tweaks).
+plugins {
+    // Our ForgeGradle fork (from maven.zznty.ru). Declared once, applied per-subproject below. It defaults
+    // the Minecraft Mavenizer to our multi-loader-capable fork, so no tool override is needed.
+    id 'net.zznty.forgegradle' version '[7.0.29,8.0)' apply false
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'idea'
+    apply plugin: 'net.zznty.forgegradle'
+
+    version = rootProject.version
+    group = rootProject.group
+    base.archivesName = "${mod_id}-${project.name}"
+
+    java.toolchain.languageVersion = JavaLanguageVersion.of(java_version as int)
+
+    // Every module compiles against the same official (Mojang) mappings — the key to sharing code with no
+    // per-loader remapping.
+    minecraft {
+        mappings channel: 'official', version: mc_version
+    }
+
+    repositories {
+        minecraft.mavenizer(it)
+        maven fg.fabricMaven
+        maven fg.neoForgeMaven
+        maven fg.forgeMaven
+        maven fg.minecraftLibsMaven
+        mavenCentral()
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+
+    idea.module { downloadJavadoc = downloadSources = true }
+
+    // Token-expand the loader manifests so the mod id/name/version live in one place (gradle.properties).
+    processResources {
+        def expandProps = [
+                'version'              : version,
+                'group'                : project.group,
+                'minecraft_version'    : mc_version,
+                'mc_version_range'     : mc_version_range,
+                'mod_id'               : mod_id,
+                'mod_name'             : mod_name,
+                'mod_author'           : mod_author,
+                'mod_description'      : mod_description,
+                'fabric_loader_version': fabric_loader_version,
+                'neoforge_version'     : neoforge_version,
+                'forge_version'        : forge_version,
+        ]
+        inputs.properties(expandProps)
+        filesMatching(['pack.mcmeta', 'fabric.mod.json', 'META-INF/neoforge.mods.toml', 'META-INF/mods.toml']) {
+            expand expandProps
+        }
+    }
+}
+
+// ─── Loader modules only (everything except `common`) ───
+// Pull the shared `common` module's raw sources/resources and compile/bundle them straight into each loader
+// jar. Because every module uses the same official mappings, no remapping or jar-in-jar is needed.
+configure(subprojects.findAll { it.name != 'common' }) {
+    configurations {
+        commonJava { canBeResolved = true; canBeConsumed = false }
+        commonResources { canBeResolved = true; canBeConsumed = false }
+    }
+
+    dependencies {
+        compileOnly project(':common')                                          // IDE/compiler resolution only
+        commonJava project(path: ':common', configuration: 'commonJava')
+        commonResources project(path: ':common', configuration: 'commonResources')
+    }
+
+    tasks.named('compileJava', JavaCompile) {
+        dependsOn(configurations.commonJava)
+        source(configurations.commonJava)
+    }
+    tasks.named('processResources', ProcessResources) {
+        dependsOn(configurations.commonResources)
+        from(configurations.commonResources)
+    }
+
+    // The standard ForgeGradle run tasks. NeoForge/Forge add a debug logging level; Fabric ignores unknown
+    // system properties, so applying it everywhere is harmless and keeps the three identical.
+    minecraft {
+        runs {
+            configureEach {
+                workingDir.convention layout.projectDirectory.dir('run')
+                systemProperty 'forge.logging.console.level', 'debug'
+                systemProperty 'neoforge.logging.console.level', 'debug'
+            }
+            register('client') {}
+            register('server') { args '--nogui' }
+        }
+    }
+}

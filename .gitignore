@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Run directories
+run/
+runs/
+**/run/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+*.launch
+bin/
+
+# OS
+.DS_Store

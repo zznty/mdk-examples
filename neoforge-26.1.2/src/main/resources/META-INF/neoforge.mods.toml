@@ -1,0 +1,10 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "neoforge_test"
+version = "${mod_version}"
+displayName = "${mod_name}"
+authors = "${mod_authors}"
+description = "${mod_description}"

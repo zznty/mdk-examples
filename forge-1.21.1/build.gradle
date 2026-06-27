@@ -1,0 +1,42 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'net.zznty.forgegradle' version '[7.0.29,8.0)'
+}
+
+version = '1.0'
+group = 'com.example'
+base.archivesName = 'forge_test'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+minecraft {
+    mappings channel: 'official', version: mc_version
+
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir('run')
+            systemProperty 'forge.logging.console.level', 'debug'
+        }
+
+        register('client') {}
+        register('server') { args '--nogui' }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+
+dependencies {
+    implementation minecraft.dependency("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
+}
+
+// IntelliJ/Eclipse no longer download sources & javadocs by default. ForgeGradle relies on the IDE
+// resolving the Minecraft *sources* variant through normal artifact resolution; without this, the IDE
+// falls back to a scuffed `downloadArtifact_` path that can stall the "Building model" sync phase.
+// See https://github.com/MinecraftForge/ForgeGradle/issues/1008
+idea.module { downloadJavadoc = downloadSources = true }

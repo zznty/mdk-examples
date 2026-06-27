@@ -1,0 +1,19 @@
+// The `common` module: clean, loader-free Minecraft. Shared code that only touches net.minecraft.* lives
+// here and is compiled directly into each loader jar (see the root build.gradle). Shared FG7 config
+// (plugin, mappings, repositories, Mavenizer override) comes from the root `subprojects {}` block.
+dependencies {
+    // 'joined' = merged client+server vanilla jar, in official (Mojang) names.
+    implementation minecraft.dependency("net.minecraft:joined:${mc_version}")
+}
+
+// Expose this module's raw source + resource directories so the loader subprojects can compile/bundle them
+// straight into their own jars (no jar-in-jar, no remap).
+configurations {
+    commonJava { canBeResolved = false; canBeConsumed = true }
+    commonResources { canBeResolved = false; canBeConsumed = true }
+}
+
+artifacts {
+    commonJava sourceSets.main.java.sourceDirectories.singleFile
+    commonResources sourceSets.main.resources.sourceDirectories.singleFile
+}

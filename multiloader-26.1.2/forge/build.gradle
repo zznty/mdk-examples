@@ -1,0 +1,4 @@
+// Forge loader module. Shared FG7 config + common-source-merge + run tasks come from the root build.gradle.
+dependencies {
+    implementation minecraft.dependency("net.minecraftforge:forge:${mc_version}-${forge_version}")
+}

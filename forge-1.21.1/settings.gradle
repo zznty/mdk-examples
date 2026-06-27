@@ -1,0 +1,10 @@
+pluginManagement {
+    repositories {
+        // Our toolchain maven hosts ForgeGradle (net.zznty.forgegradle) + its plugin marker.
+        maven { url = 'https://maven.zznty.ru/releases' }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'forge-1.21.1'
