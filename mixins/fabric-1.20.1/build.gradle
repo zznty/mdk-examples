@@ -55,9 +55,10 @@ dependencies {
 // The Mavenizer publishes the Mojmap->intermediary mapping in minecraft.dependency.toObfFile. We pass both
 // that mapping and the mixin AP's generated mappings so the refmap is remapped correctly.
 //
-// Note: for Fabric the Mavenizer outputs mappings.obf.file (a file path) but not mappings.obf.artifact (a
-// maven coordinate), so we use setMappings with the file directly instead of renamer.mappings(String).
-renamer.setMappings(layout.files(minecraft.dependency.toObfFile))
+// The Mavenizer exposes the Mojmap->intermediary mapping both as a resolvable coordinate
+// (minecraft.dependency.toObf, used here for the mixin-refmap path) and as a file
+// (minecraft.dependency.toObfFile, used by the reobf step) — mirroring how Forge exposes toSrg / toSrgFile.
+renamer.mappings(minecraft.dependency.toObf)
 renamer.classes(tasks.named('jar', Jar)) {
     map.from minecraft.dependency.toObfFile
     archiveClassifier = 'intermediary'
