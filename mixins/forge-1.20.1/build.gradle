@@ -1,0 +1,75 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'net.zznty.forgegradle' version '[7.0.29,8.0)'
+    // Renamer: reobfs the jar from Mojmap (dev) to SRG (production) and remaps the mixin refmap.
+    id 'net.minecraftforge.renamer' version '1.1.1'
+}
+
+version = '1.0'
+group = 'com.example'
+base.archivesName = 'mixin_test'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'official', version: mc_version
+
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir('run')
+            systemProperty 'forge.logging.console.level', 'debug'
+            // Mixin needs the config registered at runtime (alternatively, put it in the jar manifest).
+            args "--mixin.config=${mod_id}.mixins.json"
+        }
+
+        register('client') {}
+        register('server') { args '--nogui' }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+
+// ─── Mixin ────────────────────────────────────────────────────────
+// The annotation processor generates a refmap (a mapping from the dev/Mojmap names to the obfuscated names)
+// that the mixin transformer uses at runtime to locate its targets. On obfuscated MC (1.20.1, SRG prod) the
+// refmap must be remapped to the production namespace — the renamer's `enableMixinRefmaps` handles that.
+renamer.enableMixinRefmaps {
+    config "${mod_id}.mixins.json"
+}
+
+// renamer-gradle 1.1.1 defaults to renamer tool 2.2.1, which isn't published; pin a version that is.
+renamerTools {
+    configure("classes") { artifact = "net.minecraftforge:renamer:2.2.3:all" }
+}
+
+dependencies {
+    implementation minecraft.dependency("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
+    // The Mixin annotation processor: generates the refmap during compilation. Forge bundles Mixin at runtime,
+    // so this is compile-time only.
+    annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
+}
+
+// ─── Production reobf: Mojmap (dev) -> SRG (shipped) ──────────────
+// The Mavenizer publishes the Mojmap->SRG mapping in minecraft.dependency.toSrgFile. We pass both that mapping
+// and the mixin AP's generated mappings to the renamer so the refmap inside the jar is remapped correctly.
+renamer.mappings(minecraft.dependency.toSrg)
+renamer.classes(tasks.named('jar', Jar)) {
+    map.from minecraft.dependency.toSrgFile
+    archiveClassifier = 'srg'
+    mappings renamer.mixin.generatedMappings
+}
+
+tasks.named('jar', Jar) {
+    manifest {
+        // Declares the mixin config so the loader picks it up automatically.
+        attributes['MixinConfigs'] = "${mod_id}.mixins.json"
+    }
+}
+
+idea.module { downloadJavadoc = downloadSources = true }

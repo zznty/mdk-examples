@@ -1,0 +1,10 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "mixin_test"
+version = "1.0"
+displayName = "Mixin Test"
+authors = "Test"
+description = "Mixin example for Forge 1.20.1 (obfuscated, SRG reobf with refmap)"

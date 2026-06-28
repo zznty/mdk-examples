@@ -122,6 +122,18 @@ emits the right metadata per loader (`metadata.json` + `FMLModType` for Forge/Ne
 
 See [`jarjar/README.md`](jarjar/README.md) for the full explanation.
 
+### Mixins (obfuscated vs direct)
+
+SpongePowered Mixin examples showing how refmaps and reobf differ between obfuscated and direct (unobfuscated)
+MC. Both inject into `DedicatedServer.initServer()`.
+
+| Example | Loader | MC | Runtime namespace | Refmap? |
+|---------|--------|----|----|---------|
+| [`mixins/forge-1.20.1`](mixins/forge-1.20.1) | Forge | 1.20.1 | SRG | Yes (Mojmap → SRG via renamer `enableMixinRefmaps`) |
+| [`mixins/forge-1.21.1`](mixins/forge-1.21.1) | Forge | 1.21.1 | Mojmap | No (`remap = false`, dev = runtime) |
+
+See [`mixins/README.md`](mixins/README.md) for the full explanation.
+
 ## How it works (high level)
 
 - **Single mapping namespace.** Every module compiles against **official (Mojang) mappings**. On
