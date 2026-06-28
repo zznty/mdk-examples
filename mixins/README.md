@@ -88,7 +88,3 @@ and for Fabric 1.20.1 (intermediary — `class_3176` = `DedicatedServer`, `e()Z`
   `compileOnly 'org.spongepowered:mixin:0.8.7'` alongside the processor. The Mixin artifact isn't on Maven
   Central — it's hosted on the Forge maven (`fg.forgeMaven`).
 - Mixin configs are declared in `fabric.mod.json` under `"mixins"`, not the jar manifest.
-- For obfuscated MC the Mavenizer exposes the Mojmap→intermediary mapping both as a resolvable coordinate
-  (`minecraft.dependency.toObf`) and as a file (`minecraft.dependency.toObfFile`) — just like Forge's
-  `toSrg` / `toSrgFile`. The mixin-refmap path needs the coordinate, so use
-  `renamer.mappings(minecraft.dependency.toObf)` (requires Mavenizer ≥ 0.5.28 / ForgeGradle ≥ 7.0.38).
