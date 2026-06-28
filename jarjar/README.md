@@ -5,12 +5,13 @@ mod can use it at runtime without the user installing it separately. The same li
 **Forge, NeoForge and Fabric**, using a single plugin: a cross-loader fork of Forge's JarJar, published as
 **`net.zznty.jarjar`** on [`maven.zznty.ru`](https://maven.zznty.ru).
 
-| Example | Loader | MC | What it shows |
-|---------|--------|----|----|
+| Example | Loader(s) | MC | What it shows |
+|---------|-----------|----|----|
 | [`forge-1.21.1`](forge-1.21.1) | Forge | 1.21.1 | `loader = 'forge'` |
 | [`neoforge-26.1.2`](neoforge-26.1.2) | NeoForge | 26.1.2 | `loader = 'neoforge'` (same format as Forge) |
 | [`fabric-26.1.2`](fabric-26.1.2) | Fabric | 26.1.2 | `loader = 'fabric'` (the special case) |
 | [`multiloader-1.21.1`](multiloader-1.21.1) | Forge + Fabric | 1.21.1 | one shared lib, `loader = project.name` |
+| [`multiloader-1.20.1`](multiloader-1.20.1) | Forge + Fabric | 1.20.1 | obfuscated: Jar-in-Jar + production reobf (SRG / intermediary) on the same jar |
 
 ## Why a loader matters for JiJ
 
@@ -80,9 +81,10 @@ If JiJ is wired correctly, that call resolves at runtime even though `greetlib` 
   (so it is bundled). Using `implementation` would additionally drop it onto the dev runtime classpath as a
   loose dependency, which defeats the point of testing the embedded copy.
 - **Fabric + production reobf:** the Fabric multiloader module also runs the Renamer to ship in the
-  intermediary namespace. The Renamer remaps the base `jar`; the `jarJar` task nests into it. If you ship a
-  reobfuscated Fabric jar, apply the embedding to the reobf output (or reobf before embedding) — these
-  examples keep the two steps separate for clarity and verify the embedding on the dev (Mojmap) jar.
-- Only the Fabric path has been verified end-to-end on a real server so far (the nested lib loads and runs).
-  The Forge/NeoForge artifacts are structurally verified (metadata.json + `FMLModType` marker) against the
-  format real loaders use.
+  intermediary namespace. On 1.20.1 both Forge and Fabric need reobf — see
+  [`multiloader-1.20.1`](multiloader-1.20.1) for the full setup where the renamer runs on the `jarJar` output
+  so the shipped jar has both reobfed classes and the nested library.
+- Only the Fabric path (26.1.2) has been verified end-to-end on a real server so far (the nested lib loads and
+  runs). The Forge/NeoForge artifacts are structurally verified (metadata.json + `FMLModType` marker) against
+  the format real loaders use. The 1.20.1 reobf+jarjar jars are bytecode-verified (SRG/intermediary method
+  names confirmed in the mod class, nested lib present with correct marker).

@@ -1,0 +1,24 @@
+// Fabric loader module. Shared FG7 config + common-source-merge + run tasks come from the root build.gradle.
+plugins {
+    id 'net.minecraftforge.renamer'
+}
+
+dependencies {
+    // Synthetic coordinate '<mc>-<loader>' (handled by our forked Mavenizer).
+    implementation minecraft.dependency("net.fabricmc:fabric:${mc_version}-${fabric_loader_version}")
+}
+
+// renamer-gradle 1.1.1 defaults to renamer tool 2.2.1, which isn't published; pin a version that is.
+renamerTools {
+    configure("classes") { artifact = "net.minecraftforge:renamer:2.2.3:all" }
+}
+
+// Production reobf: Mojmap (dev) -> intermediary (shipped). The Mavenizer publishes the Mojmap->intermediary
+// mapping in minecraft.dependency.toObfFile for the Fabric (Mojmap) dependency.
+//
+// We reobf the `jarJar` task output (not the base `jar`) so the shipped jar has BOTH reobfed mod classes AND
+// the nested greetlib library. greetlib has no Minecraft references, so the renamer leaves it untouched.
+renamer.classes(tasks.named('jarJar', Jar)) {
+    map.from minecraft.dependency.toObfFile
+    archiveClassifier = 'intermediary'
+}

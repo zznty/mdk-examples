@@ -118,6 +118,7 @@ emits the right metadata per loader (`metadata.json` + `FMLModType` for Forge/Ne
 | [`jarjar/neoforge-26.1.2`](jarjar/neoforge-26.1.2) | NeoForge | 26.1.2 | `loader = 'neoforge'` (same format as Forge). |
 | [`jarjar/fabric-26.1.2`](jarjar/fabric-26.1.2) | Fabric | 26.1.2 | `loader = 'fabric'` (the special case). |
 | [`jarjar/multiloader-1.21.1`](jarjar/multiloader-1.21.1) | Forge + Fabric | 1.21.1 | One shared lib embedded into both jars; `loader = project.name`. |
+| [`jarjar/multiloader-1.20.1`](jarjar/multiloader-1.20.1) | Forge + Fabric | 1.20.1 | Obfuscated: Jar-in-Jar + production reobf (SRG / intermediary) on the same jar. |
 
 See [`jarjar/README.md`](jarjar/README.md) for the full explanation.
 
