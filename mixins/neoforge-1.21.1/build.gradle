@@ -1,0 +1,70 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'net.zznty.forgegradle' version '[7.0.29,8.0)'
+}
+
+version = '1.0'
+group = 'com.example'
+base.archivesName = 'mixin_test'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+minecraft {
+    mappings channel: 'official', version: mc_version
+
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir('run')
+            systemProperty 'neoforge.logging.console.level', 'debug'
+            // Mixin needs the config registered at runtime (alternatively, put it in neoforge.mods.toml).
+            args "--mixin.config=${mod_id}.mixins.json"
+        }
+
+        register('client') {}
+        register('server') { args '--nogui' }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.neoForgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+
+dependencies {
+    implementation minecraft.dependency("net.neoforged:neoforge:${neoforge_version}")
+    // NeoForge bundles Mixin at runtime (like Forge), so only the annotation processor is needed.
+    annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
+}
+
+tasks.named('jar', Jar) {
+    manifest {
+        // Declares the mixin config so the loader picks it up automatically.
+        // NeoForge also supports [[mixins]] in neoforge.mods.toml — either approach works.
+        attributes['MixinConfigs'] = "${mod_id}.mixins.json"
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('processResources', ProcessResources) {
+    var replaceProperties = [
+        minecraft_version: mc_version,
+        neoforge_version: neoforge_version,
+        mod_id: mod_id,
+        mod_name: mod_name,
+        mod_version: mod_version,
+        mod_authors: mod_authors,
+        mod_description: mod_description,
+    ]
+    inputs.property('replaceProperties', replaceProperties)
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties
+    }
+}
+
+idea.module { downloadJavadoc = downloadSources = true }

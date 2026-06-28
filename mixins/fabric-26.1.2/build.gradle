@@ -1,0 +1,62 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'net.zznty.forgegradle' version '[7.0.29,8.0)'
+}
+
+version = '1.0'
+group = 'com.example'
+base.archivesName = 'mixin_test'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+minecraft {
+    mappings channel: 'official', version: mc_version
+
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir('run')
+        }
+        register('client') {}
+        register('server') { args '--nogui' }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.fabricMaven
+    maven fg.minecraftLibsMaven
+    // SpongePowered Mixin artifact (not on mavenCentral; the Forge maven hosts it).
+    maven fg.forgeMaven
+    mavenCentral()
+}
+
+dependencies {
+    implementation minecraft.dependency("net.fabricmc:fabric:${mc_version}-${loader_version}")
+    // Fabric does not expose Mixin annotations on the compile classpath (unlike Forge, which bundles Mixin).
+    // The annotation processor jar contains the annotations too, but we declare compileOnly explicitly so IDE
+    // resolution works without the AP.
+    compileOnly 'org.spongepowered:mixin:0.8.7'
+    annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('processResources', ProcessResources) {
+    var replaceProperties = [
+        minecraft_version: mc_version,
+        loader_version: loader_version,
+        mod_id: mod_id,
+        mod_name: mod_name,
+        mod_version: mod_version,
+        mod_description: mod_description,
+    ]
+    inputs.property('replaceProperties', replaceProperties)
+    filesMatching(['fabric.mod.json']) {
+        expand replaceProperties
+    }
+}
+
+idea.module { downloadJavadoc = downloadSources = true }

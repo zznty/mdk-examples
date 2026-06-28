@@ -1,0 +1,86 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'net.zznty.forgegradle' version '[7.0.29,8.0)'
+    // Renamer: reobfs the jar from Mojmap (dev) to intermediary (production) and remaps the mixin refmap.
+    id 'net.minecraftforge.renamer' version '1.1.1'
+}
+
+version = '1.0'
+group = 'com.example'
+base.archivesName = 'mixin_test'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'official', version: mc_version
+
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir('run')
+        }
+        register('client') {}
+        register('server') { args '--nogui' }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.fabricMaven
+    maven fg.minecraftLibsMaven
+    // SpongePowered Mixin artifact (not on mavenCentral; the Forge maven hosts it).
+    maven fg.forgeMaven
+    mavenCentral()
+}
+
+// ─── Mixin ────────────────────────────────────────────────────────
+// The annotation processor generates a refmap mapping Mojmap (dev) names to intermediary (runtime) names.
+// The renamer's enableMixinRefmaps configures the AP with the Mojmap->intermediary mapping and remaps the
+// refmap inside the jar during reobf. Fabric reads mixin configs from fabric.mod.json (not the jar manifest).
+renamer.enableMixinRefmaps {
+    config "${mod_id}.mixins.json"
+}
+
+renamerTools {
+    configure("classes") { artifact = "net.minecraftforge:renamer:2.2.3:all" }
+}
+
+dependencies {
+    implementation minecraft.dependency("net.fabricmc:fabric:${mc_version}-${loader_version}")
+    compileOnly 'org.spongepowered:mixin:0.8.7'
+    annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
+}
+
+// ─── Production reobf: Mojmap (dev) -> intermediary (shipped) ─────
+// The Mavenizer publishes the Mojmap->intermediary mapping in minecraft.dependency.toObfFile. We pass both
+// that mapping and the mixin AP's generated mappings so the refmap is remapped correctly.
+//
+// Note: for Fabric the Mavenizer outputs mappings.obf.file (a file path) but not mappings.obf.artifact (a
+// maven coordinate), so we use setMappings with the file directly instead of renamer.mappings(String).
+renamer.setMappings(layout.files(minecraft.dependency.toObfFile))
+renamer.classes(tasks.named('jar', Jar)) {
+    map.from minecraft.dependency.toObfFile
+    archiveClassifier = 'intermediary'
+    mappings renamer.mixin.generatedMappings
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('processResources', ProcessResources) {
+    var replaceProperties = [
+        minecraft_version: mc_version,
+        loader_version: loader_version,
+        mod_id: mod_id,
+        mod_name: mod_name,
+        mod_version: mod_version,
+        mod_description: mod_description,
+    ]
+    inputs.property('replaceProperties', replaceProperties)
+    filesMatching(['fabric.mod.json']) {
+        expand replaceProperties
+    }
+}
+
+idea.module { downloadJavadoc = downloadSources = true }

@@ -1,0 +1,6 @@
+{
+    "package": "com.example.mixintest.mixin",
+    "mixins": [
+        "DedicatedServerMixin"
+    ]
+}

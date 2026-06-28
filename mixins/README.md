@@ -1,43 +1,57 @@
-# Mixin examples (obf vs direct)
+# Mixin examples (obf vs direct, all loaders)
 
-Two Forge examples showing how to use [SpongePowered Mixin](https://github.com/SpongePowered/Mixin) with
-ForgeGradle 7 — one on **obfuscated** MC (needs a refmap + reobf) and one on **direct/unobfuscated** MC
-(no refmap needed). The key difference is whether the dev namespace (Mojmap) matches the runtime namespace.
+[SpongePowered Mixin](https://github.com/SpongePowered/Mixin) examples with ForgeGradle 7, covering both
+**obfuscated** MC (needs a refmap + reobf) and **direct/unobfuscated** MC (no refmap), across Forge, NeoForge
+and Fabric. Every example injects into `DedicatedServer.initServer()` and logs when the server starts.
 
-| Example | MC | Runtime namespace | Refmap? | Reobf? |
-|---------|----|----|---------|--------|
-| [`forge-1.20.1`](forge-1.20.1) | 1.20.1 | SRG | Yes (Mojmap → SRG via renamer) | Yes (`-srg.jar`) |
-| [`forge-1.21.1`](forge-1.21.1) | 1.21.1 | Mojmap | No (`remap = false`) | No |
+| Example | Loader | MC | Runtime namespace | Refmap | Mixin config declared in |
+|---------|--------|----|----|--------|--------------------------|
+| [`forge-1.21.1`](forge-1.21.1) | Forge | 1.21.1 | Mojmap | none (`remap = false`) | jar manifest `MixinConfigs` |
+| [`forge-1.20.1`](forge-1.20.1) | Forge | 1.20.1 | SRG | Mojmap → SRG | jar manifest `MixinConfigs` |
+| [`neoforge-1.21.1`](neoforge-1.21.1) | NeoForge | 1.21.1 | Mojmap | none (`remap = false`) | jar manifest (or `neoforge.mods.toml`) |
+| [`fabric-26.1.2`](fabric-26.1.2) | Fabric | 26.1.2 | Mojmap | none (`remap = false`) | `fabric.mod.json` `"mixins"` |
+| [`fabric-1.20.1`](fabric-1.20.1) | Fabric | 1.20.1 | intermediary | Mojmap → intermediary | `fabric.mod.json` `"mixins"` |
 
-Both examples inject into `DedicatedServer.initServer()` and log when the server starts.
+## The core idea: dev namespace vs runtime namespace
 
-## How it works
+You always **compile** against Mojmap (official) names. Whether you need a **refmap** depends on what the
+loader **runs**:
 
-### Obfuscated MC (1.20.1, SRG production)
+- **Runtime == Mojmap** (Forge/NeoForge on modern MC, Fabric on unobf 26.x): the names match, so no refmap is
+  needed. Annotate mixin members with `remap = false` so the AP doesn't try to look up an obfuscation mapping
+  (which would fail — there's nothing to map to).
+- **Runtime != Mojmap** (Forge 1.20.1 → SRG, Fabric 1.20.1 → intermediary): the mixin annotation processor
+  generates a **refmap** translating Mojmap → the runtime namespace, and the production jar is reobfed. The
+  [Renamer](https://github.com/MinecraftForge/Renamer) plugin's `enableMixinRefmaps` configures the AP and
+  remaps the refmap during reobf.
 
-Forge 1.20.1 runs **SRG** names in production, but you compile against **Mojmap** (official) names. The mixin
-annotation processor (AP) generates a **refmap** that translates between them:
+## Direct / unobfuscated (no refmap)
 
-```json
-// main.refmap.json (inside the jar)
-{
-  "data": {
-    "searge": {
-      "DedicatedServerMixin": {
-        "initServer": "Lnet/minecraft/server/dedicated/DedicatedServer;m_7038_()Z"
-      }
-    }
-  }
+```java
+// remap = false: dev namespace IS the runtime namespace, so look up the method by its Mojmap name directly.
+@Inject(method = "initServer", at = @At("RETURN"), remap = false)
+```
+
+```groovy
+dependencies {
+    annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
 }
 ```
 
-At runtime the mixin transformer reads the refmap, resolves `initServer` → `m_7038_`, and injects into the
-correct SRG method. The [renamer](https://github.com/MinecraftForge/Renamer) plugin's `enableMixinRefmaps`
-configures the AP (so it knows the SRG mapping) and `mixin.generatedMappings` feeds the AP's output into the
-reobf step. The shipped jar is **`-srg.jar`** (reobfed mod classes + remapped refmap).
+The shipped jar is the plain `jar` output — no `-srg`/`-intermediary` reobf.
+
+## Obfuscated (refmap + reobf)
+
+```java
+// remap = true (default): the AP generates a refmap entry for this target.
+@Inject(method = "initServer", at = @At("RETURN"))
+```
 
 ```groovy
 renamer.enableMixinRefmaps { config "${mod_id}.mixins.json" }
+renamerTools { configure("classes") { artifact = "net.minecraftforge:renamer:2.2.3:all" } }
+
+// Forge (SRG): the Mavenizer exposes the mapping as a coordinate.
 renamer.mappings(minecraft.dependency.toSrg)
 renamer.classes(tasks.named('jar', Jar)) {
     map.from minecraft.dependency.toSrgFile
@@ -46,32 +60,34 @@ renamer.classes(tasks.named('jar', Jar)) {
 }
 ```
 
-### Direct / unobfuscated MC (1.21.1, Mojmap production)
+The generated `main.refmap.json` looks like (Forge 1.20.1):
 
-Forge 1.21.1 runs **Mojmap** in production — the same namespace you compile against. No translation is needed,
-so there's no refmap and no reobf. The only requirement is `remap = false` on mixin annotations that reference
-method names, so the AP doesn't try (and fail) to look up an obfuscation mapping:
-
-```java
-@Inject(method = "initServer", at = @At("RETURN"), remap = false)
+```json
+{ "data": { "searge": { "DedicatedServerMixin": { "initServer": "Lnet/minecraft/server/dedicated/DedicatedServer;m_7038_()Z" } } } }
 ```
 
-The shipped jar is the plain `jar` output (no `-srg.jar`).
+and for Fabric 1.20.1 (intermediary — `class_3176` = `DedicatedServer`, `e()Z` = the intermediary method):
 
-## Common setup (both examples)
-
-```groovy
-dependencies {
-    implementation minecraft.dependency("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
-    annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
-}
-
-tasks.named('jar', Jar) {
-    manifest {
-        attributes['MixinConfigs'] = "${mod_id}.mixins.json"
-    }
-}
+```json
+{ "data": { "searge": { "DedicatedServerMixin": { "initServer": "Lnet/minecraft/class_3176;e()Z" } } } }
 ```
 
-Forge bundles Mixin at runtime, so only the `annotationProcessor` dependency is needed (for the AP and the
-annotations). The `MixinConfigs` manifest attribute tells the loader to pick up the mixin config automatically.
+(The namespace key is always `searge` by mixin convention; the *values* are whatever the runtime uses.)
+
+## Loader-specific notes
+
+### Forge / NeoForge
+- Both **bundle Mixin** at runtime, so only the `annotationProcessor` dependency is needed (it also carries the
+  annotations for compilation).
+- The mixin config is registered via the jar manifest `MixinConfigs` attribute. NeoForge additionally supports
+  a `[[mixins]]` block in `neoforge.mods.toml`.
+- NeoForge 1.21.1 (and modern Forge) run **Mojmap** in production → no refmap. Forge 1.20.1 runs **SRG** → refmap.
+
+### Fabric
+- Fabric does **not** expose Mixin annotations on the compile classpath, so add an explicit
+  `compileOnly 'org.spongepowered:mixin:0.8.7'` alongside the processor. The Mixin artifact isn't on Maven
+  Central — it's hosted on the Forge maven (`fg.forgeMaven`).
+- Mixin configs are declared in `fabric.mod.json` under `"mixins"`, not the jar manifest.
+- For obfuscated MC the Mavenizer exposes the Mojmap→intermediary mapping as a **file**
+  (`minecraft.dependency.toObfFile`), not a coordinate, so feed it to the renamer with
+  `renamer.setMappings(layout.files(minecraft.dependency.toObfFile))` rather than `renamer.mappings(String)`.

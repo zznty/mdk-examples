@@ -1,0 +1,14 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "${mod_name}"
+authors = "${mod_authors}"
+description = "${mod_description}"
+
+# NeoForge also supports declaring mixin configs here instead of the jar manifest:
+# [[mixins]]
+# config = "${mod_id}.mixins.json"

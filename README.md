@@ -125,14 +125,19 @@ See [`jarjar/README.md`](jarjar/README.md) for the full explanation.
 ### Mixins (obfuscated vs direct)
 
 SpongePowered Mixin examples showing how refmaps and reobf differ between obfuscated and direct (unobfuscated)
-MC. Both inject into `DedicatedServer.initServer()`.
+MC, across all loaders. Every example injects into `DedicatedServer.initServer()`.
 
 | Example | Loader | MC | Runtime namespace | Refmap? |
 |---------|--------|----|----|---------|
-| [`mixins/forge-1.20.1`](mixins/forge-1.20.1) | Forge | 1.20.1 | SRG | Yes (Mojmap → SRG via renamer `enableMixinRefmaps`) |
 | [`mixins/forge-1.21.1`](mixins/forge-1.21.1) | Forge | 1.21.1 | Mojmap | No (`remap = false`, dev = runtime) |
+| [`mixins/forge-1.20.1`](mixins/forge-1.20.1) | Forge | 1.20.1 | SRG | Yes (Mojmap → SRG via renamer `enableMixinRefmaps`) |
+| [`mixins/neoforge-1.21.1`](mixins/neoforge-1.21.1) | NeoForge | 1.21.1 | Mojmap | No (`remap = false`) |
+| [`mixins/fabric-26.1.2`](mixins/fabric-26.1.2) | Fabric | 26.1.2 | Mojmap | No (`remap = false`) |
+| [`mixins/fabric-1.20.1`](mixins/fabric-1.20.1) | Fabric | 1.20.1 | intermediary | Yes (Mojmap → intermediary) |
 
-See [`mixins/README.md`](mixins/README.md) for the full explanation.
+See [`mixins/README.md`](mixins/README.md) for the full explanation, including the loader-specific notes
+(Forge/NeoForge bundle Mixin and use the jar manifest; Fabric needs an explicit Mixin dependency and declares
+configs in `fabric.mod.json`).
 
 ## How it works (high level)
 
