@@ -1,0 +1,59 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'net.zznty.forgegradle' version '[7.0.29,8.0)'
+    // Cross-loader Jar-in-Jar (our fork of Forge's JarJar). Embeds dependencies into the mod jar and makes
+    // them loadable at runtime for the chosen loader.
+    id 'net.zznty.jarjar' version '[0.2,1.0)'
+}
+
+version = '1.0'
+group = 'com.example'
+base.archivesName = 'forge_test'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+minecraft {
+    mappings channel: 'official', version: mc_version
+
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir('run')
+            systemProperty 'forge.logging.console.level', 'debug'
+        }
+
+        register('client') {}
+        register('server') { args '--nogui' }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+
+// ─── Jar-in-Jar ───────────────────────────────────────────────────
+// Create the `jarJar` configuration/task and tell it which loader the output targets. For Forge this embeds
+// META-INF/jarjar/metadata.json and stamps plain libraries with `FMLModType: LIBRARY` so FancyModLoader puts
+// them on the classpath. The resulting artifact is `<name>-all.jar` — that is the jar you ship.
+jarJar.register {
+    loader = 'forge'
+}
+
+dependencies {
+    implementation minecraft.dependency("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
+
+    // `compileOnly` so the mod can call into the library at compile time, and `jarJar(...)` so it is embedded
+    // (and made runtime-loadable) inside the shipped jar. We don't use `implementation`, because that would
+    // also try to put it on the dev runtime classpath separately.
+    compileOnly project(':greetlib')
+    jarJar(project(':greetlib')) {
+        jarJar.configure(it) {
+            version = '1.0.0'
+        }
+    }
+}
+
+idea.module { downloadJavadoc = downloadSources = true }

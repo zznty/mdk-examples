@@ -1,0 +1,26 @@
+pluginManagement {
+    repositories {
+        // Our toolchain maven hosts ForgeGradle (net.zznty.forgegradle) and the cross-loader Jar-in-Jar
+        // plugin (net.zznty.jarjar), plus their plugin markers.
+        maven { url = 'https://maven.zznty.ru/releases' }
+        // Forge maven hosts the Renamer plugin (net.minecraftforge:renamer-gradle) used for prod reobf.
+        maven { url = 'https://maven.minecraftforge.net/' }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+    // The Renamer plugin is published as net.minecraftforge:renamer-gradle (no Gradle plugin marker),
+    // so map its plugin id to the artifact explicitly.
+    resolutionStrategy.eachPlugin {
+        if (requested.id.id == 'net.minecraftforge.renamer')
+            useModule("net.minecraftforge:renamer-gradle:${requested.version}")
+    }
+}
+
+rootProject.name = 'jarjar-multiloader-1.21.1'
+
+// The library we embed into BOTH loader jars via Jar-in-Jar. A plain Java library — no Minecraft, no loader,
+// not a ForgeGradle project — so the root subprojects {} block skips it (see build.gradle).
+include 'greetlib'
+include 'common'
+include 'fabric'
+include 'forge'

@@ -1,0 +1,14 @@
+pluginManagement {
+    repositories {
+        // Our toolchain maven hosts ForgeGradle (net.zznty.forgegradle) and the cross-loader Jar-in-Jar
+        // plugin (net.zznty.jarjar), plus their plugin markers.
+        maven { url = 'https://maven.zznty.ru/releases' }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'jarjar-neoforge-26.1.2'
+
+// The library we embed into the mod jar via Jar-in-Jar. A plain Java library with no Minecraft/loader dep.
+include 'greetlib'

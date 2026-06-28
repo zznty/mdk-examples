@@ -1,0 +1,15 @@
+pluginManagement {
+    repositories {
+        // Our toolchain maven hosts ForgeGradle (net.zznty.forgegradle) and the cross-loader Jar-in-Jar
+        // plugin (net.zznty.jarjar), plus their plugin markers.
+        maven { url = 'https://maven.zznty.ru/releases' }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'jarjar-forge-1.21.1'
+
+// The library we embed into the mod jar via Jar-in-Jar. It is an ordinary Java library with no Minecraft or
+// loader dependency — exactly the kind of thing you would otherwise have to shade.
+include 'greetlib'

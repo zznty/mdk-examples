@@ -15,6 +15,7 @@ Fabric** — including a **shared-code multiloader** setup — all driven by a s
 |-----------|------------|--------|
 | ForgeGradle 7 (fork) | plugin id `net.zznty.forgegradle` / `net.zznty:forgegradle` | [zznty/ForgeGradle](https://github.com/zznty/ForgeGradle) (branch `FG_7.0`) |
 | Minecraft Mavenizer (fork) | `net.zznty:minecraft-mavenizer` | [zznty/MinecraftMavenizer](https://github.com/zznty/MinecraftMavenizer) |
+| JarJar (fork, cross-loader) | plugin id `net.zznty.jarjar` / `net.zznty:jarjar-gradle` | [zznty/JarJar](https://github.com/zznty/JarJar) |
 
 Both are published to `https://maven.zznty.ru/releases`. The ForgeGradle fork **defaults the Mavenizer tool
 to our fork**, so consumers don't need any `fgtools` override — applying `net.zznty.forgegradle` is enough.
@@ -103,6 +104,22 @@ The loader coordinates are:
 | [`multiloader-1.20.1`](multiloader-1.20.1) | Forge + Fabric | 1.20.1 | Obfuscated, SRG-era Forge; production reobf for both loaders. |
 
 See each multiloader example's own README for how the shared-code pattern and production reobfuscation work.
+
+### Jar-in-Jar (embedding libraries, cross-loader)
+
+Embed a plain Java library **inside** the mod jar so it loads at runtime without separate installation — across
+all loaders, via the `net.zznty.jarjar` plugin (a cross-loader fork of Forge's JarJar). The `loader` property
+emits the right metadata per loader (`metadata.json` + `FMLModType` for Forge/NeoForge; patched
+`fabric.mod.json` for Fabric).
+
+| Example | Loader(s) | MC | Notes |
+|---------|-----------|----|-------|
+| [`jarjar/forge-1.21.1`](jarjar/forge-1.21.1) | Forge | 1.21.1 | `loader = 'forge'`. |
+| [`jarjar/neoforge-26.1.2`](jarjar/neoforge-26.1.2) | NeoForge | 26.1.2 | `loader = 'neoforge'` (same format as Forge). |
+| [`jarjar/fabric-26.1.2`](jarjar/fabric-26.1.2) | Fabric | 26.1.2 | `loader = 'fabric'` (the special case). |
+| [`jarjar/multiloader-1.21.1`](jarjar/multiloader-1.21.1) | Forge + Fabric | 1.21.1 | One shared lib embedded into both jars; `loader = project.name`. |
+
+See [`jarjar/README.md`](jarjar/README.md) for the full explanation.
 
 ## How it works (high level)
 

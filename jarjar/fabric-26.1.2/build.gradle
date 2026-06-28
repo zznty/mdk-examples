@@ -1,0 +1,85 @@
+plugins {
+    id 'java'
+    id 'idea'
+    // Our ForgeGradle fork, resolved from maven.zznty.ru. It defaults the Minecraft Mavenizer to our
+    // multi-loader-capable fork, so no tool override is needed.
+    id 'net.zznty.forgegradle' version '[7.0.29,8.0)'
+    // Cross-loader Jar-in-Jar. Fabric does NOT use metadata.json — instead, loader = 'fabric' patches the mod's
+    // fabric.mod.json "jars" list and synthesizes a fabric.mod.json inside any embedded non-mod library so that
+    // Fabric treats it as a nested mod and puts it on the classpath.
+    id 'net.zznty.jarjar' version '[0.2,1.0)'
+}
+
+version = '1.0'
+group = 'com.example'
+base.archivesName = 'fabric_test'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+// ─── Minecraft / Fabric ───────────────────────────────────────────
+minecraft {
+    // Unobfuscated Minecraft -> official (Mojang) names, matching Fabric's no-remap toolchain.
+    mappings channel: 'official', version: mc_version
+
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir('run')
+        }
+
+        register('client') {
+            // Client will be killed after reaching main menu
+        }
+
+        register('server') {
+            args '--nogui'
+        }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.fabricMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+
+// ─── Jar-in-Jar ───────────────────────────────────────────────────
+// loader = 'fabric' makes the jarJar task patch this mod's fabric.mod.json (adding the nested jar to "jars")
+// and fabricize the embedded greetlib (synthesize a fabric.mod.json inside it). Ship the `-all.jar`.
+jarJar.register {
+    loader = 'fabric'
+}
+
+dependencies {
+    // Synthetic coordinate: '<mcVersion>-<loaderVersion>' (mirrors net.minecraftforge:forge:<mc>-<forge>).
+    implementation minecraft.dependency("net.fabricmc:fabric:${mc_version}-${loader_version}")
+
+    // compileOnly to compile against it; jarJar(...) to embed + make it runtime-loadable inside the shipped jar.
+    compileOnly project(':greetlib')
+    jarJar(project(':greetlib')) {
+        jarJar.configure(it) {
+            version = '1.0.0'
+        }
+    }
+}
+
+idea.module { downloadJavadoc = downloadSources = true }
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('processResources', ProcessResources) {
+    var replaceProperties = [
+        minecraft_version: mc_version,
+        loader_version: loader_version,
+        mod_id: mod_id,
+        mod_name: mod_name,
+        mod_version: mod_version,
+        mod_description: mod_description,
+    ]
+    inputs.property('replaceProperties', replaceProperties)
+    filesMatching(['fabric.mod.json']) {
+        expand replaceProperties
+    }
+}

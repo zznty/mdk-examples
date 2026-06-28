@@ -1,0 +1,11 @@
+// A plain Java library — no Minecraft, no loader. This is the artifact we embed into the mod jar via
+// Jar-in-Jar, so that the mod can use it at runtime without the user installing it separately.
+plugins {
+    id 'java'
+}
+
+group = 'com.example.greetlib'
+version = '1.0.0'
+base.archivesName = 'greetlib'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)

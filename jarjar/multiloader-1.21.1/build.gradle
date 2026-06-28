@@ -1,0 +1,135 @@
+// Root build for the multiloader example. All shared configuration lives here in subprojects {} blocks, so
+// there is no buildSrc / convention plugins to maintain (the same approach as a typical Architectury project).
+//
+//   * configure(modModules) {}            -> applied to the Minecraft modules (common + loaders)
+//   * configure(loaderModules) {}         -> applied to the LOADER modules only (forge + fabric)
+//
+// `greetlib` is a plain Java library (no Minecraft, no loader), so it is deliberately left out of both groups
+// and configured solely by its own build.gradle. It is embedded into each loader jar via Jar-in-Jar.
+//
+// Per-module build.gradle files then only carry what genuinely differs (the Minecraft/loader coordinate and
+// any loader-specific run tweaks).
+plugins {
+    // Our ForgeGradle fork (from maven.zznty.ru). Declared once, applied per-subproject below. It defaults
+    // the Minecraft Mavenizer to our multi-loader-capable fork, so no tool override is needed.
+    id 'net.zznty.forgegradle' version '[7.0.29,8.0)' apply false
+    // Cross-loader Jar-in-Jar. Applied to the loader modules below; each picks its own `loader` flavour.
+    id 'net.zznty.jarjar' version '[0.2,1.0)' apply false
+    // Renamer: produces the shippable (non-dev) jars. Forge here runs Mojmap in production so needs no reobf,
+    // but Fabric ships in the intermediary namespace, so the fabric module reobfs Mojmap -> intermediary.
+    id 'net.minecraftforge.renamer' version '1.1.1' apply false
+}
+
+// The Minecraft modules (everything except the plain `greetlib` library).
+def modModules = subprojects.findAll { it.name != 'greetlib' }
+// The loader modules (thin per-loader wrappers around `common`).
+def loaderModules = subprojects.findAll { it.name == 'forge' || it.name == 'fabric' }
+
+configure(modModules) {
+    apply plugin: 'java'
+    apply plugin: 'idea'
+    apply plugin: 'net.zznty.forgegradle'
+
+    version = rootProject.version
+    group = rootProject.group
+    base.archivesName = "${mod_id}-${project.name}"
+
+    java.toolchain.languageVersion = JavaLanguageVersion.of(java_version as int)
+
+    // Every module compiles against the same official (Mojang) mappings — the key to sharing code with no
+    // per-loader remapping.
+    minecraft {
+        mappings channel: 'official', version: mc_version
+    }
+
+    repositories {
+        minecraft.mavenizer(it)
+        maven fg.fabricMaven
+        maven fg.neoForgeMaven
+        maven fg.forgeMaven
+        maven fg.minecraftLibsMaven
+        mavenCentral()
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+
+    idea.module { downloadJavadoc = downloadSources = true }
+
+    // Token-expand the loader manifests so the mod id/name/version live in one place (gradle.properties).
+    processResources {
+        def expandProps = [
+                'version'              : version,
+                'group'                : project.group,
+                'minecraft_version'    : mc_version,
+                'mc_version_range'     : mc_version_range,
+                'mod_id'               : mod_id,
+                'mod_name'             : mod_name,
+                'mod_author'           : mod_author,
+                'mod_description'      : mod_description,
+                'fabric_loader_version': fabric_loader_version,
+                'forge_version'        : forge_version,
+        ]
+        inputs.properties(expandProps)
+        filesMatching(['pack.mcmeta', 'fabric.mod.json', 'META-INF/mods.toml']) {
+            expand expandProps
+        }
+    }
+}
+
+// ─── Loader modules only (forge + fabric) ───
+// Pull the shared `common` module's raw sources/resources and compile/bundle them straight into each loader
+// jar. Because every module uses the same official mappings, no remapping is needed for the shared code.
+configure(loaderModules) {
+    // Cross-loader Jar-in-Jar. Each loader module embeds the shared `greetlib` library into its shipped jar and
+    // selects the matching `loader` flavour so the nested lib is actually loaded at runtime:
+    //   * forge  -> META-INF/jarjar/metadata.json + FMLModType: LIBRARY marker on greetlib
+    //   * fabric -> patched fabric.mod.json "jars" + a synthesized fabric.mod.json inside greetlib
+    apply plugin: 'net.zznty.jarjar'
+    jarJar.register {
+        loader = project.name   // 'forge' or 'fabric'
+    }
+
+    configurations {
+        commonJava { canBeResolved = true; canBeConsumed = false }
+        commonResources { canBeResolved = true; canBeConsumed = false }
+    }
+
+    dependencies {
+        compileOnly project(':common')                                          // IDE/compiler resolution only
+        commonJava project(path: ':common', configuration: 'commonJava')
+        commonResources project(path: ':common', configuration: 'commonResources')
+
+        // greetlib: compileOnly so the merged common sources compile against it; jarJar(...) to embed it.
+        compileOnly project(':greetlib')
+        jarJar(project(':greetlib')) {
+            jarJar.configure(it) {
+                version = '1.0.0'
+            }
+        }
+    }
+
+    tasks.named('compileJava', JavaCompile) {
+        dependsOn(configurations.commonJava)
+        source(configurations.commonJava)
+    }
+    tasks.named('processResources', ProcessResources) {
+        dependsOn(configurations.commonResources)
+        from(configurations.commonResources)
+    }
+
+    // The standard ForgeGradle run tasks. NeoForge/Forge add a debug logging level; Fabric ignores unknown
+    // system properties, so applying it everywhere is harmless and keeps the three identical.
+    minecraft {
+        runs {
+            configureEach {
+                workingDir.convention layout.projectDirectory.dir('run')
+                systemProperty 'forge.logging.console.level', 'debug'
+                systemProperty 'neoforge.logging.console.level', 'debug'
+            }
+            register('client') {}
+            register('server') { args '--nogui' }
+        }
+    }
+}
