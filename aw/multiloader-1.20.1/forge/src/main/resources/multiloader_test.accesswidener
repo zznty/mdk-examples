@@ -1,0 +1,6 @@
+accessWidener	v2	named
+# Widen DedicatedServer and its initServer() so both Forge and Fabric modules can call it
+# directly at runtime. On Forge (SRG runtime) the Mavenizer converts this to an AT with SRG
+# names; on Fabric (intermediary runtime) the Fabric Loader consumes it natively.
+accessible	class	net/minecraft/server/dedicated/DedicatedServer
+accessible	method	net/minecraft/server/dedicated/DedicatedServer	initServer	()Z

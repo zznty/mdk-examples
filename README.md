@@ -122,6 +122,19 @@ emits the right metadata per loader (`metadata.json` + `FMLModType` for Forge/Ne
 
 See [`jarjar/README.md`](jarjar/README.md) for the full explanation.
 
+### Access Wideners (cross-loader, obfuscated)
+
+A single `.accesswidener` file widens access to protected/private Minecraft members across both Forge and
+Fabric. For Forge, the Mavenizer converts it to an Access Transformer with SRG names; for Fabric, the
+Fabric Loader consumes it natively.
+
+| Example | Loaders | MC | Notes |
+|---------|---------|----|-------|
+| [`aw/multiloader-1.20.1`](aw/multiloader-1.20.1) | Forge + Fabric | 1.20.1 | Obfuscated: AW→AT conversion (two-pass), width test on `DedicatedServer.initServer()`. |
+
+DSL: `minecraft { accessWidener = "modid.accesswidener" }` — requires Mavenizer ≥ 0.5.31 / ForgeGradle ≥ 7.0.41.
+See [`aw/README.md`](aw/README.md) for the full explanation.
+
 ### Mixins (obfuscated vs direct)
 
 SpongePowered Mixin examples showing how refmaps and reobf differ between obfuscated and direct (unobfuscated)
